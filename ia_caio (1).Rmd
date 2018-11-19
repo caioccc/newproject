@@ -1,0 +1,101 @@
+---
+title: "Projeto IA - Resultados"
+author: "Caio Marinho - Gilvan Neto - Jennifer Lucena - Alberto Wagner - Ánissa Costa"
+date: "14 de novembro de 2018"
+output:
+  html_document:
+    theme: yeti
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r}
+library(readr)
+library(highcharter)
+library(Metrics)
+```
+
+#Aprendizagem e avaliação de um modelo de classificação em dados reais
+
+Neste projeto foi realizado a implementação na linguagem Python e utilizando o ambiente de programação R Studio um programa para estimar/predizer o preço (MSRP) que nada mais é do que o preço pelo qual o fabricante recomenda que o produto seja vendido no varejo, a partir de suas caracteristicas como marca, modelo, quilometragem, ano, estado e cidade.
+
+##Processo
+
+Inicialmente fizemos uma separação (split) dos dados originais em dois subconjuntos aleatórios disjuntos na proporção 80% para treino e 20% para teste. A partir disso, com os 80% de treino, retiramos a variavel alvo (price) das variaveis de predicao e transformamos o dataframe em questão, onde as colunas categóricas City, State, Make e Model foram transformadas em colunas numéricas.
+
+Tendo realizado essas operações iniciais partimos para a criação de dois modelos preditivos, sendo um modelo a árvore de decisão (Tree Decision) e o outro modelo o Ada Booster. Em seguida treinamos as duas IA's (com seu subconjunto de treino) e por fim avaliamos os modelos com o conjunto de teste, obtendo métricas(RMSE e MAE) de qualidade do modelo preditivo. Fizemos um laço de repetição dos passos acima 10 vezes para calculo das métricas e salvamos os resultados das predições de ambos em um arquivo CSV denominado "results.csv".
+```{r}
+results <- read_csv("results.csv")
+
+part_results <- results[0:40000,]
+```
+
+
+##Exploração dos dados
+
+A seguir podemos compreender a distribuição dos preços dos carros contidos na base de dados:
+
+```{r}
+summary(results$real_td)
+```
+
+Observações: 
+
+  - 75% dos dados estão abaixo de R$26995
+  - Há uma grande disperção no preço dos carros acima de R$26995
+  
+##Pré-processamento dos dados
+
+  - Foi retirado da base de dados original a coluna referente ao chassi (VIN) do carro, pois é um valor único para cada carro.
+  - As colunas categóricas City, State, Make e Model foram transformadas em colunas numéricas
+
+##Resultados 
+
+Observando graficamente os resultados das predições, abaixo temos um scatter plot que mostra a relação do preço real x preço predito, onde o cenário ideal seria o aparecimento de uma linearidade no gráfico.
+
+```{r}
+hchart(part_results, "scatter", hcaes(real_td, predicted_td)) %>% 
+  hc_title(text = "Resultados obtidos com Árvore de Decisão") %>% 
+  hc_xAxis(title = list(text = "Preço real")) %>% 
+  hc_yAxis(title = list(text = "Preço predito")) %>%
+  hc_add_theme(hc_theme_google())
+  
+
+hchart(part_results, "scatter", hcaes(real_ada, predicted_ada)) %>% 
+  hc_title(text = "Resultados obtidos com Ada Booster") %>% 
+  hc_xAxis(title = list(text = "Preço real")) %>% 
+  hc_yAxis(title = list(text = "Preço predito")) %>%
+  hc_add_theme(hc_theme_google())
+```
+
+Abaixo podemos observar os resultado das métricas(RMSE e MAE) avalitiavas dos modelos (TD e ADA).
+
+  - RMSE(ROOT MEAN SQUARE ERROR): A medida de erro mais comumente usada para aferir a qualidade do ajuste de um modelo é a chamada RAIZ DO ERRO MÉDIO QUADRÁTICO. Ela é a raiz do erro médio quadrático da diferença entre a predição e o valor real. Podemos pensar nela como sendo uma medida análoga ao desvio padrão
+  
+  - MAE(Mean Absolute Error): Mede a magnitude média dos erros em um conjunto de previsões, sem considerar sua direção. É a média sobre a amostra de teste das diferenças absolutas entre previsão e observação real, onde todas as diferenças individuais têm peso igual.
+```{r}
+#Calculo das métricas avaliativas
+
+rmse_td <- rmse(results$real_td, results$predicted_td)
+rmse_ada <- rmse(results$real_ada, results$predicted_ada)
+
+mae_td <- mae(results$real_td, results$predicted_td)
+mae_ada <- mae(results$real_ada, results$predicted_ada)
+
+
+df_metrics <- data.frame("Result" = c(rmse_td, rmse_ada, mae_td, mae_ada),
+                                "Metric" = c("RMSE", "RMSE","MAE", "MAE"),
+                                "IA" = c("TD", "ADA", "TD", "ADA"))
+
+hchart(df_metrics, "column", hcaes(x = IA, y = Result, group = Metric)) %>%  
+  hc_title(text = "Resultado das métricas obtidas observando sua respectiva IA") %>%
+  hc_yAxis(title = list(text = "Valor"),
+           labels = list(format = "{value}", useHTML = TRUE)) %>% 
+  hc_xAxis(title = list(text = "Modelo utilizado")) %>%
+  hc_add_theme(hc_theme_google())
+```
+
